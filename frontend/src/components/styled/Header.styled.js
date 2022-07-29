@@ -12,6 +12,15 @@ export const StyledHeader = styled.header`
         letter-spacing: 10px;
         font-weight: 700;
     }
+    
+    .disconnect {
+        position: absolute;
+        right: 30px;
+        top: 30px;
+        color: #FFF;
+        cursor: pointer;
+        font-size: 20px;
+    }
 
     .toggle-icon {
         background: none;
