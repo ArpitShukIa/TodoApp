@@ -10,15 +10,19 @@ contract TodoList {
     }
 
     uint public todoCount = 0;
-    mapping(uint => Todo) public todos;
+    mapping(address => mapping(uint => Todo)) public todos;
+
+    function getTodo(uint id) public view returns (Todo memory) {
+        return todos[msg.sender][id];
+    }
 
     function createTodo(string memory content) public {
         todoCount++;
-        todos[todoCount] = Todo(todoCount, content, false);
+        todos[msg.sender][todoCount] = Todo(todoCount, content, false);
     }
 
     function toggleCompleted(uint id) public {
-        todos[id].completed = !todos[id].completed;
+        todos[msg.sender][id].completed = !todos[msg.sender][id].completed;
     }
 
 }

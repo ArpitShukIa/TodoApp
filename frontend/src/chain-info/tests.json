@@ -1,0 +1,15 @@
+{
+  "contracts": {
+    "TodoList": "ab6abf9bfaaae6f5709274934c0eeedba7f23ebf"
+  },
+  "tests": {
+    "tests/test_todo_list.py": {
+      "coverage": false,
+      "isolated": false,
+      "results": "..",
+      "sha1": "4e1c87bf46257c68c19d7dc090abaa4644a2c275",
+      "txhash": []
+    }
+  },
+  "tx": {}
+}

@@ -1,6 +1,5 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {ThemeProvider} from 'styled-components';
-import {v4 as uuidv4} from 'uuid';
 import classNames from 'classnames';
 
 import {lightTheme, darkTheme} from './themes.js';
@@ -13,9 +12,11 @@ import TodoList from './components/TodoList.js';
 import TodoFilters from './components/TodoFilters.js';
 import {useEthers} from "@usedapp/core";
 
-const LOCAL_STORAGE_KEY = 'todoApp.todos';
+import {getDeployedContract, getTodos, createTodo, toggleTodoCompleted} from "./contractUtils";
+import {providers} from "ethers";
 
 function App() {
+    const [contract, setContract] = useState(null);
     const [todos, setTodos] = useState([]);
     const [filter, setFilter] = useState('all');
     const [filteredTodos, setFilteredTodos] = useState([]);
@@ -23,7 +24,7 @@ function App() {
     const [activeFilterActive, setActiveFilterActive] = useState(false);
     const [completedFilterActive, setCompletedFilterActive] = useState(false);
 
-    const {account, activateBrowserWallet} = useEthers()
+    const {account, activateBrowserWallet, chainId} = useEthers()
 
     const isConnected = account !== undefined
 
@@ -35,53 +36,62 @@ function App() {
     const [colorTheme, setColorTheme] = useState('light');
 
     useEffect(() => {
-        const storedTodos = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-        if (storedTodos) {
-            setTodos(storedTodos);
-            setFilter('all');
-            setFilteredTodos(storedTodos);
-        }
+        const provider = new providers.Web3Provider(window.ethereum, "any");
+        provider.on("network", (newNetwork, oldNetwork) => {
+            // When a Provider makes its initial connection, it emits a "network"
+            // event with a null oldNetwork along with the newNetwork. So, if the
+            // oldNetwork exists, it represents a changing network
+            if (oldNetwork) {
+                window.location.reload();
+            }
+        });
     }, [])
 
     useEffect(() => {
-        if (todos.length !== 0) {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(todos))
-        }
-    }, [todos])
+        if (!account || contract)
+            return
+        getDeployedContract().then(contract => {
+            if (contract) {
+                setContract(contract)
+            } else {
+                console.log('Not connected to Rinkeby Test Network')
+            }
+        })
+    }, [account, chainId])
 
-    // ADD TODO
+    useEffect(() => {
+        if (!contract)
+            return
+        getTodos(contract).then(todos => {
+            setTodos(todos);
+            setFilter('all');
+            setFilteredTodos(todos);
+        })
+    }, [contract])
+
     function handleAddTodo() {
-        const todoName = newTodoInput.current.value;
-        if (todoName === "") {
+        const todoContent = newTodoInput.current.value;
+        if (todoContent === "") {
             return;
         }
-        setTodos([...todos, {id: uuidv4(), todoName: todoName, complete: false}]);
-        newTodoInput.current.value = null;
+        createTodo(contract, todoContent).then(() => {
+            window.location.reload()
+        })
     }
 
-    // TOGGLE TODO COMPLETE/NOT COMPLETE
     function toggleTodo(id) {
-        const newTodos = [...todos];
-        const selectedTask = todos.find(todo => todo.id === id);
-        selectedTask.complete = !selectedTask.complete;
-        setTodos(newTodos)
+        toggleTodoCompleted(contract, id).then(() => {
+            window.location.reload()
+        })
     }
 
-    // CLEAR ALL TODOS MARKED COMPLETE
     function handleClear() {
-        const remainingTodos = todos.filter(todo => !todo.complete);
+        const remainingTodos = todos.filter(todo => !todo.completed);
         setTodos(remainingTodos);
     }
 
-    // CLEAR TODO WHEN X CLICKED
-    function deleteTodo(id) {
-        const remainingTodos = todos.filter(todo => todo.id !== id);
-        setTodos(remainingTodos);
-    }
-
-    // COUNT ANY UNCOMPLETED TODOS
     function countRemaining() {
-        const count = todos.filter(todo => !todo.complete);
+        const count = todos.filter(todo => !todo.completed);
 
         if (count.length === 1) {
             return `1 item left`;
@@ -102,13 +112,13 @@ function App() {
             setActiveFilterActive(false);
             setCompletedFilterActive(false);
         } else if (filter === 'active') {
-            const activeTodos = todos.filter(todo => !todo.complete);
+            const activeTodos = todos.filter(todo => !todo.completed);
             setFilteredTodos(activeTodos);
             setActiveFilterActive(true);
             setAllFilterActive(false);
             setCompletedFilterActive(false);
         } else if (filter === 'completed') {
-            const completedTodos = todos.filter(todo => todo.complete);
+            const completedTodos = todos.filter(todo => todo.completed);
             setFilteredTodos(completedTodos);
             setCompletedFilterActive(true);
             setAllFilterActive(false);
@@ -141,8 +151,7 @@ function App() {
                         ? <>
                             <TodoInput newTodoInput={newTodoInput} handleAddTodo={handleAddTodo}/>
 
-                            <TodoList todos={filteredTodos} toggleTodo={toggleTodo} deleteTodo={deleteTodo}
-                                      classNames={classNames}/>
+                            <TodoList todos={filteredTodos} toggleTodo={toggleTodo} classNames={classNames}/>
 
                             <TodoFilters
                                 countRemaining={countRemaining}
