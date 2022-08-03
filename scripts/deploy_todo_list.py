@@ -4,7 +4,7 @@ import os
 import shutil
 
 
-def deploy_todo_list(update_frontend=True):
+def deploy_todo_list(update_frontend=False):
     account = get_account()
     todo_list = TodoList.deploy(
         {"from": account},
@@ -26,4 +26,4 @@ def update_front_end():
 
 
 def main():
-    deploy_todo_list()
+    deploy_todo_list(update_frontend=True)
